@@ -38,9 +38,9 @@ import Ska.Matplotlib
 
 import xija
 
-MSID = dict(dpa='PFTANK2T')
-YELLOW = dict(dpa=37.8)
-MARGIN = dict(dpa=0)
+MSID = dict(pftank2t='PFTANK2T')
+YELLOW = dict(pftank2t=37.8)
+MARGIN = dict(pftank2t=0)
 VALIDATION_LIMITS = {'PFTANK2T': [(1, 2.5),
                                  (50, 1.0),
                                  (99, 2.5)],
@@ -53,13 +53,14 @@ VALIDATION_LIMITS = {'PFTANK2T': [(1, 2.5),
 TASK_DATA = os.path.dirname(__file__)
 URL = "http://cxc.harvard.edu/mta/ASPECT/pftank2t_daily_check"
 
-logger = logging.getLogger('load_check')
+logger = logging.getLogger('pftank2t_check')
 
-try: 
+try:
     _versionfile = os.path.join(os.path.dirname(__file__), 'VERSION')
     VERSION = open(_versionfile).read().strip()
 except:
     VERSION = '1.0'
+
 
 def get_options():
     from optparse import OptionParser
@@ -73,10 +74,10 @@ def get_options():
     parser.add_option("--model-spec",
                       default=os.path.join(TASK_DATA,
                                            'pftank2t_model_spec.json'),
-                      help="DPA model specification file")
+                      help="PFTANK2T model specification file")
     parser.add_option("--days",
                       type='float',
-                      default=21.0,
+                      default=100.0,
                       help="Days of validation data (days)")
     parser.add_option("--run-start",
                       help="Reference time to replace run start time "
@@ -92,7 +93,7 @@ def get_options():
                       default=150.0,
                       type='float',
                       help="Starting pitch (deg)")
-    parser.add_option("--T-dpa",
+    parser.add_option("--T-pftank2t",
                       type='float',
                       help="Starting PFTANK2T temperature (degC)")
     parser.add_option("--version",
@@ -113,7 +114,7 @@ def main(opt):
     proc = dict(run_user=os.environ['USER'],
                 run_time=time.ctime(),
                 errors=[],
-                dpa_limit=YELLOW['dpa'] - MARGIN['dpa'],
+                pftank2t_limit=YELLOW['pftank2t'] - MARGIN['pftank2t'],
                 )
     logger.info('##############################'
                 '#######################################')
@@ -178,15 +179,15 @@ def main(opt):
                 plots_validation=plots_validation)
 
 
-def calc_model(model_spec, states, start, stop, T_dpa=None, T_dpa_times=None):
+def calc_model(model_spec, states, start, stop, T_pftank2t=None, T_pftank2t_times=None):
     model = xija.ThermalModel('pftank2t', start=start, stop=stop,
                               model_spec=model_spec)
 
     times = np.array([states['tstart'], states['tstop']])
     model.comp['pitch'].set_data(states['pitch'], times)
     model.comp['eclipse'].set_data(False)
-    model.comp['pf0tank2t'].set_data(T_dpa, T_dpa_times)
-    model.comp['pftank2t'].set_data(T_dpa, T_dpa_times)
+    model.comp['pf0tank2t'].set_data(T_pftank2t, T_pftank2t_times)
+    model.comp['pftank2t'].set_data(T_pftank2t, T_pftank2t_times)
 
     model.make()
     model.calc()
@@ -197,7 +198,7 @@ def make_week_predict(opt, tstart, tstop, bs_cmds, tlm, db):
 
     # Try to make initial state0 from cmd line options
     state0 = dict((x, getattr(opt, x))
-                  for x in ('pitch', 'T_dpa'))
+                  for x in ('pitch', 'T_pftank2t'))
     state0.update({'tstart': tstart - 30,
                    'tstop': tstart,
                    'datestart': DateTime(tstart - 30).date,
@@ -214,13 +215,13 @@ def make_week_predict(opt, tstart, tstop, bs_cmds, tlm, db):
                                        datepar='datestart')
         ok = ((tlm['date'] >= state0['tstart'] - 700) &
               (tlm['date'] <= state0['tstart'] + 700))
-        state0.update({'T_dpa': np.mean(tlm['pftank2t'][ok])})
+        state0.update({'T_pftank2t': np.mean(tlm['pftank2t'][ok])})
 
     # TEMPORARY HACK: core model doesn't actually support predictive
     # active heater yet.  Initial temperature determines active heater
     # state for predictions now.
-    if state0['T_dpa'] < 15:
-        state0['T_dpa'] = 15.0
+    if state0['T_pftank2t'] < 15:
+        state0['T_pftank2t'] = 15.0
 
     logger.debug('state0 at %s is\n%s' % (DateTime(state0['tstart']).date,
                                            pformat(state0)))
@@ -256,17 +257,19 @@ def make_week_predict(opt, tstart, tstop, bs_cmds, tlm, db):
     logger.info('Found %d commanded states from %s to %s' %
                  (len(states), states[0]['datestart'], states[-1]['datestop']))
 
-    # Create array of times at which to calculate DPA temps, then do it.
-    logger.info('Calculating DPA thermal model')
+    # Create array of times at which to calculate PFTANK2T temps, then do it.
+    logger.info('Calculating PFTANK2T thermal model')
+    logger.info('Propagation initial time and PFTANK2T: {} {:.2f}'.format(
+            DateTime(state0['tstart']).date, state0['T_pftank2t']))
 
     model = calc_model(opt.model_spec, states, state0['tstart'], tstop,
-                       state0['T_dpa'])
+                       state0['T_pftank2t'])
 
-    # Make the DPA limit check plots and data files
+    # Make the PFTANK2T limit check plots and data files
     plt.rc("axes", labelsize=10, titlesize=12)
     plt.rc("xtick", labelsize=10)
     plt.rc("ytick", labelsize=10)
-    temps = {'dpa': model.comp['pftank2t'].mvals}
+    temps = {'pftank2t': model.comp['pftank2t'].mvals}
     plots = make_check_plots(opt, states, model.times, temps, tstart)
     viols = make_viols(opt, states, model.times, temps)
     write_states(opt, states)
@@ -413,7 +416,7 @@ def config_logging(outdir, verbose):
                 1: logging.INFO,
                 2: logging.DEBUG}.get(verbose, logging.INFO)
 
-    logger = logging.getLogger('dpa_check')
+    logger = logging.getLogger('pftank2t_check')
     logger.setLevel(loglevel)
 
     formatter = logging.Formatter('%(message)s')
@@ -439,7 +442,7 @@ def write_states(opt, states):
            'tstop': '%.2f',
            }
     newcols = list(states.dtype.names)
-    newcols.remove('T_dpa')
+    newcols.remove('T_pftank2t')
     newstates = np.rec.fromarrays([states[x] for x in newcols], names=newcols)
     Ska.Numpy.pprint(newstates, fmt, out)
     out.close()
@@ -449,8 +452,8 @@ def write_temps(opt, times, temps):
     """Write temperature predictions to file temperatures.dat"""
     outfile = os.path.join(opt.outdir, 'temperatures.dat')
     logger.info('Writing temperatures to %s' % outfile)
-    T_dpa = temps['dpa']
-    temp_recs = [(times[i], DateTime(times[i]).date, T_dpa[i])
+    T_pftank2t = temps['pftank2t']
+    temp_recs = [(times[i], DateTime(times[i]).date, T_pftank2t[i])
                  for i in xrange(len(times))]
     temp_array = np.rec.fromrecords(
         temp_recs, names=('time', 'date', 'pftank2t'))
@@ -580,7 +583,7 @@ def make_check_plots(opt, states, times, temps, tstart):
     load_start = Ska.Matplotlib.cxctime2plotdate([tstart])[0]
 
     logger.info('Making temperature check plots')
-    for fig_id, msid in enumerate(('dpa',)):
+    for fig_id, msid in enumerate(('pftank2t',)):
         plots[msid] = plot_two(fig_id=fig_id + 1,
                                x=times,
                                y=temps[msid],
@@ -603,28 +606,6 @@ def make_check_plots(opt, states, times, temps, tstart):
         logger.info('Writing plot file %s' % outfile)
         plots[msid]['fig'].savefig(outfile)
         plots[msid]['filename'] = filename
-
-    plots['pow_sim'] = plot_two(
-        fig_id=3,
-        title='ACIS CCDs and SIM-Z position',
-        xlabel='Date',
-        x=pointpair(states['tstart'], states['tstop']),
-        y=pointpair(states['ccd_count']),
-        ylabel='CCD_COUNT',
-        ylim=(-0.1, 6.1),
-        x2=pointpair(states['tstart'], states['tstop']),
-        y2=pointpair(states['simpos']),
-        ylabel2='SIM-Z (steps)',
-        ylim2=(-105000, 105000),
-        )
-    plots['pow_sim']['ax'].axvline(load_start, linestyle=':', color='g',
-                                   linewidth=1.0)
-    plots['pow_sim']['fig'].subplots_adjust(right=0.85)
-    filename = 'pow_sim.png'
-    outfile = os.path.join(opt.outdir, filename)
-    logger.info('Writing plot file %s' % outfile)
-    plots['pow_sim']['fig'].savefig(outfile)
-    plots['pow_sim']['filename'] = filename
 
     return plots
 
@@ -680,8 +661,8 @@ def make_validation_plots(opt, tlm, db):
     stop = tlm['date'][-1]
     states = get_states(start, stop, db)
 
-    # Create array of times at which to calculate DPA temperatures, then do it
-    logger.info('Calculating DPA thermal model for validation')
+    # Create array of times at which to calculate PFTANK2T temperatures, then do it
+    logger.info('Calculating PFTANK2T thermal model for validation')
 
     model = calc_model(opt.model_spec, states, start, stop, float(tlm['pftank2t'][0]))
 
@@ -707,7 +688,7 @@ def make_validation_plots(opt, tlm, db):
             'tscpos': '%d'}
 
     plots = []
-    logger.info('Making DPA model validation plots and quantile table')
+    logger.info('Making PFTANK2T model validation plots and quantile table')
     quantiles = (1, 5, 16, 50, 84, 95, 99)
     # store lines of quantile table in a string and write out later
     quant_table = ''
@@ -733,7 +714,7 @@ def make_validation_plots(opt, tlm, db):
 
         # Make quantiles
         if msid == 'pftank2t':
-            ok = tlm[msid] > 20.0
+            ok = tlm[msid] > 28.0
         else:
             ok = np.ones(len(tlm[msid]), dtype=bool)
         diff = np.sort(tlm[msid][ok] - pred[msid][ok])

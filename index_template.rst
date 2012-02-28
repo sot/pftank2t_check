@@ -16,7 +16,7 @@ Summary
 ====================  =============================================
 Date start            {{proc.datestart}}
 Date stop             {{proc.datestop}}
-PFTANK2T status        {%if viols.dpa%}:red:`NOT OK`{% else %}OK{% endif%} (limit = {{proc.dpa_limit|floatformat:1}} C)
+PFTANK2T status        {%if viols.pftank2t%}:red:`NOT OK`{% else %}OK{% endif%} (limit = {{proc.pftank2t_limit|floatformat:1}} C)
 {% if opt.loaddir %}
 Load directory        {{opt.loaddir}}
 {% endif %}
@@ -26,13 +26,13 @@ Temperatures          `<temperatures.dat>`_
 States                `<states.dat>`_
 ====================  =============================================
 
-{% if viols.dpa  %}
+{% if viols.pftank2t  %}
 PFTANK2T Violations
 -------------------
 =====================  =====================  ==================
 Date start             Date stop              Max temperature
 =====================  =====================  ==================
-{% for viol in viols.dpa %}
+{% for viol in viols.pftank2t %}
 {{viol.datestart}}  {{viol.datestop}}  {{viol.maxtemp|floatformat:2}}
 {% endfor %}
 =====================  =====================  ==================
@@ -40,7 +40,7 @@ Date start             Date stop              Max temperature
 No PFTANK2T Violations
 {% endif %}
 
-.. image:: {{plots.dpa.filename}}
+.. image:: {{plots.pftank2t.filename}}
 
 ==========================
 PFTANK2T Model Validation
@@ -49,7 +49,7 @@ PFTANK2T Model Validation
 MSID quantiles
 ---------------
 
-Note: PFTANK2T quantiles are calculated using only points where PFTANK2T > 20 degC.
+Note: PFTANK2T quantiles are calculated using only points where PFTANK2T > 28 degC.
 
 .. csv-table:: 
    :header: "MSID", "1%", "5%", "16%", "50%", "84%", "95%", "99%"
@@ -82,7 +82,7 @@ No Validation Violations
 {{ plot.msid }}
 -----------------------
 
-Note: PFTANK2T residual histograms include only points where PFTANK2T > 20 degC.
+Note: PFTANK2T residual histograms include only points where PFTANK2T > 28 degC.
 
 Red = telemetry, blue = model
 
