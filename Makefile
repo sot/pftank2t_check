@@ -1,8 +1,8 @@
 # Set the task name
-TASK = dpa
+TASK = pftank2t
 
 # Versions
-VERSION = `python dpa_check.py --version`
+VERSION = `python pftank2t_check.py --version`
 
 # Uncomment the correct choice indicating either SKA or TST flight environment
 FLIGHT_ENV = SKA
