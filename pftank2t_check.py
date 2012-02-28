@@ -380,7 +380,7 @@ def rst_to_html(opt, proc):
     outfile = os.path.join(opt.outdir, 'index.html')
     status = spawn.run(['rst2html.py',
                         '--stylesheet-path={}'
-                        .format(os.path.join(opt.outdir, 'dpa_check.css')),
+                        .format(os.path.join(opt.outdir, 'pftank2t_check.css')),
                         infile, outfile])
     if status != 0:
         proc['errors'].append('rst2html.py failed with status {}: see run log'
